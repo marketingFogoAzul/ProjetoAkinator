@@ -6,3 +6,4 @@ Flask-Login
 Werkzeug
 thefuzz
 python-Levenshtein
+gunicorn

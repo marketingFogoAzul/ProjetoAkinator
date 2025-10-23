@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+{% block title %}Visualizar Conversa{% endblock %}
+{% block content %}
+<main class="main-content">
+    <div class="chat-header">
+        <h1>Conversa com {{ conversation.user.username }}</h1>
+        <a href="/templates/admin.html" class="back-link">Voltar ao Admin</a>
+    </div>
+    <div class="messages-container" style="padding: 2rem;">
+        {% for message in conversation.messages %}
+        <div class="message {{ message.role }}">
+            <div class="message-avatar">
+                <i class="fas {{ 'fa-user' if message.role == 'user' else 'fa-robot' }}"></i>
+            </div>
+            <div class="message-text">
+                <p>{{ message.content }}</p>
+                <div class="message-footer">
+                    <span class="timestamp">{{ message.timestamp.strftime('%H:%M') }}</span>
+                    {% if message.role == 'user' %}
+                    <a href="/templates/admin.html?learn_question={{ message.content }}" class="btn-learn">
+                        <i class="fas fa-brain"></i> Aprender
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</main>
+{% endblock %}

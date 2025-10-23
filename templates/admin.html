@@ -1,0 +1,87 @@
+{% extends "layout.html" %}
+{% block title %}Admin - ZIPBUM{% endblock %}
+{% block content %}
+<main class="admin-container">
+    <div class="admin-header">
+        <h1>Painel do Administrador</h1>
+        <a href="/templates/chat.html">Voltar para o Chat</a>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="admin-grid">
+        <section class="admin-card">
+            <h2><i class="fas fa-brain"></i> Ensinar o ZIPBUM</h2>
+            <form class="teach-form" action="/admin/teach" method="POST">
+                <div class="input-group">
+                    <label for="question">Quando o usuário perguntar algo como...</label>
+                    <input type="text" name="question" id="question" value="{{ learn_question }}" required>
+                </div>
+                <div class="input-group">
+                    <label for="answer">Responda com...</label>
+                    <textarea name="answer" id="answer" rows="4" required></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Salvar Conhecimento</button>
+            </form>
+        </section>
+
+        <section class="admin-card">
+            <h2><i class="fas fa-users-cog"></i> Gerenciar Usuários</h2>
+            <div class="item-list user-list">
+                {% for user in users %}
+                <div class="list-item user-item">
+                    <div class="user-details">
+                        <span><strong>Usuário:</strong> {{ user.username }}</span>
+                        <span class="user-email">{{ user.email }}</span>
+                    </div>
+                    {% if not user.is_admin %}
+                    <form action="/admin/promote/{{ user.id }}" method="POST">
+                        <button type="submit" class="btn-promote">Promover a Admin</button>
+                    </form>
+                    {% else %}
+                    <span class="is-admin-badge">Já é Admin</span>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p>Nenhum outro usuário cadastrado.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="admin-card full-width">
+            <h2><i class="fas fa-history"></i> Histórico de Conversas</h2>
+            <div class="item-list">
+                {% for conv in conversations %}
+                <a href="/templates/admin/conversation/{{ conv.id }}" class="list-item">
+                    <span><strong>Usuário:</strong> {{ conv.user.username }}</span>
+                    <span>{{ conv.start_time.strftime('%d/%m/%Y %H:%M') }}</span>
+                </a>
+                {% else %}
+                <p>Nenhuma conversa encontrada.</p>
+                {% endfor %}
+            </div>
+        </section>
+        
+        <section class="admin-card full-width">
+            <h2><i class="fas fa-book-open"></i> Base de Conhecimento</h2>
+            <div class="item-list knowledge-list">
+                {% for item in knowledge %}
+                <div class="list-item">
+                    <div class="knowledge-content">
+                        <p><strong>Pergunta:</strong> {{ item.question }}</p>
+                        <p><strong>Resposta:</strong> {{ item.answer }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <p>Nenhum conhecimento foi adicionado ainda.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</main>
+{% endblock %}

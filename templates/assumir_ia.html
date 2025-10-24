@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block title %}Assumir IA - ZIPBUM{% endblock %}
+{% block content %}
+<div class="sidebar">
+    <div class="sidebar-header">
+       <h2 id="sidebarTitle">Usuários</h2>
+       <button id="backToUsersBtn" class="back-btn" style="display: none;"><i class="fas fa-arrow-left"></i> Voltar</button>
+    </div>
+    <div class="search-container">
+        <input type="text" id="userSearchInput" placeholder="Buscar por e-mail...">
+    </div>
+    <div class="chat-history" id="listContainer">
+        <p class="no-history">Carregando...</p>
+    </div>
+    <div class="sidebar-footer">
+        <div class="user-info">
+            <div class="admin-links">
+                <a href="/templates/admin.html" class="admin-link">Admin</a>
+                <a href="/templates/assumir_ia.html" class="admin-link">Assumir IA</a>
+            </div>
+            <p class="username">{{ current_user.username }}</p>
+        </div>
+        <div class="footer-actions">
+            <button class="theme-toggle" id="themeToggle" title="Alternar tema">
+                <i class="fas fa-moon"></i>
+            </button>
+            <a href="/templates/admin.html" class="logout-link">
+                <i class="fas fa-arrow-left"></i> Voltar
+            </a>
+        </div>
+    </div>
+</div>
+<main class="main-content">
+    <div class="chat-header" id="chatHeaderAdmin">
+        <h1>Selecione um usuário para ver as conversas</h1>
+    </div>
+    <div class="messages-container" id="messagesContainerAdmin">
+        </div>
+    <div class="input-container" id="inputContainerAdmin" style="display: none;">
+        <div class="input-wrapper">
+            <textarea id="messageInputAdmin" placeholder="Digite como ZIPBUM..." rows="1"></textarea>
+            <button id="sendButtonAdmin" class="btn-send">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/assumir_ia.js"></script>
+{% endblock %}

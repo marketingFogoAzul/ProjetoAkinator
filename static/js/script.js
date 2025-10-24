@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadChatHistory = async () => {
         try {
             const res = await fetch('/api/get_conversations');
+            if (!res.ok) return;
             const data = await res.json();
             historyList.innerHTML = '';
             if (data.length > 0) {
@@ -53,26 +54,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const createNewConversation = async () => {
         try {
             const res = await fetch('/api/new_conversation', { method: 'POST' });
-            if (res.status === 429) {
-                alert('Você está bloqueado e não pode criar um novo chat.');
-                messageInput.disabled = true;
-                updateUIState();
-                return;
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || 'Falha ao criar nova conversa.');
             }
-            if (!res.ok) throw new Error('Falha ao criar nova conversa.');
             
             const data = await res.json();
             currentConversationId = data.conversation_id;
             
             messagesContainer.innerHTML = '';
             if (welcomeMessage) {
-                messagesContainer.appendChild(welcomeMessage);
+                messagesContainer.appendChild(welcomeMessage.cloneNode(true));
             }
             messageInput.value = '';
             messageInput.disabled = false;
             updateUIState();
         } catch (error) {
-            console.error('Erro:', error);
+            alert(error.message);
+            messageInput.disabled = true;
+            updateUIState();
         }
     };
 
@@ -95,17 +95,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ message: messageText, conversation_id: currentConversationId }),
             });
+
             const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.response || data.error || 'Erro de comunicação com o servidor.');
+            }
+            
             updateMessage(loadingPlaceholder, data.response);
 
             if (data.is_blocked) {
                 messageInput.disabled = true;
                 updateUIState();
+                if (data.site_down) { return; }
+                
+                const suggestButton = document.createElement('button');
+                suggestButton.className = 'btn-suggest-teaching';
+                suggestButton.innerHTML = '<i class="fas fa-lightbulb"></i> Ensinar ZIPBUM sobre isso';
+                suggestButton.onclick = async () => {
+                    await fetch('/api/request_teaching', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ question: data.original_question })
+                    });
+                    suggestButton.textContent = 'Obrigado pela sugestão!';
+                    suggestButton.disabled = true;
+                };
+                messagesContainer.appendChild(suggestButton);
+                scrollToBottom();
             }
             loadChatHistory();
         } catch (error) {
             console.error('Erro:', error);
-            updateMessage(loadingPlaceholder, 'Desculpe, ocorreu um erro de conexão.');
+            updateMessage(loadingPlaceholder, error.message);
         } finally {
             isLoading = false;
             updateUIState();
@@ -113,15 +134,19 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const addMessage = (role, text, isLoadingMsg = false) => {
-        if (welcomeMessage && messagesContainer.contains(welcomeMessage)) {
-            messagesContainer.removeChild(welcomeMessage);
-        }
+        const welcome = document.getElementById('welcomeMessage');
+        if (welcome) welcome.style.display = 'none';
 
         const messageDiv = document.createElement('div');
         messageDiv.className = `message ${role}`;
         
-        const iconClass = role === 'user' ? 'fa-user' : 'fa-robot';
-        const avatarHtml = `<div class="message-avatar"><i class="fas ${iconClass}"></i></div>`;
+        let avatarHtml;
+        if (role === 'user') {
+            avatarHtml = `<div class="message-avatar"><i class="fas fa-user"></i></div>`;
+        } else {
+            avatarHtml = `<div class="message-avatar"><img src="/static/img/logo.png" alt="ZIPBUM Logo"></div>`;
+        }
+        
         const textHtml = `<div class="message-text"><p>${text}</p></div>`;
 
         messageDiv.innerHTML = avatarHtml + textHtml;
@@ -135,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
         return messageDiv;
     };
-
+    
     const updateMessage = (element, newText) => {
         element.classList.remove('loading');
         element.querySelector('.message-text p').innerText = newText;

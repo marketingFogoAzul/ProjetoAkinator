@@ -1,7 +1,6 @@
 import os
 from dotenv import load_dotenv
 
-# Carrega as variáveis do arquivo .env para o ambiente
 load_dotenv()
 
 class Config:

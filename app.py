@@ -14,7 +14,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'login' # Nome da FUNÇÃO login() abaixo
 login_manager.login_message = "Por favor, faça login para acessar esta página."
 
 # --- CONVERSOR DE FUSO HORÁRIO ---
@@ -23,7 +23,9 @@ def to_local_time(utc_datetime):
     if not utc_datetime:
         return ""
     local_tz = pytz.timezone('America/Sao_Paulo')
-    local_dt = utc_datetime.replace(tzinfo=pytz.utc).astimezone(local_tz)
+    if utc_datetime.tzinfo is None:
+        utc_datetime = pytz.utc.localize(utc_datetime)
+    local_dt = utc_datetime.astimezone(local_tz)
     return local_dt.strftime('%d/%m/%Y %H:%M')
 
 # --- MODELOS DO BANCO DE DADOS ---
@@ -34,15 +36,9 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(256), nullable=False)
     level = db.Column(db.String(20), default='user', nullable=False)
     blocked_until = db.Column(db.DateTime, nullable=True)
-    
-    def set_password(self, password): 
-        self.password_hash = generate_password_hash(password)
-    
-    def check_password(self, password): 
-        return check_password_hash(self.password_hash, password)
-    
-    def is_admin(self): 
-        return self.level in ['admin', 'total_admin']
+    def set_password(self, password): self.password_hash = generate_password_hash(password)
+    def check_password(self, password): return check_password_hash(self.password_hash, password)
+    def is_admin(self): return self.level in ['admin', 'total_admin']
 
 class KnowledgeBase(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -69,7 +65,7 @@ class TeachingRequest(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     question_content = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(20), default='pending', nullable=False)
-    user = db.relationship('User', backref=db.backref('teaching_requests', lazy=True, cascade="all, delete-orphan"))
+    user = db.relationship('User', backref=db.backref('teaching_requests', cascade="all, delete-orphan"))
 
 class SiteStatus(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -86,11 +82,6 @@ def get_site_status():
         db.session.add(status)
         db.session.commit()
     return status.status
-
-def is_user_blocked():
-    if current_user.is_authenticated and current_user.is_admin():
-        return False
-    return current_user.is_authenticated and current_user.blocked_until and current_user.blocked_until > datetime.utcnow()
 
 # --- ROTAS DE AUTENTICAÇÃO ---
 @app.route('/templates/login.html', methods=['GET', 'POST'])
@@ -115,20 +106,16 @@ def register():
         if User.query.filter_by(email=request.form.get('email')).first():
             flash('Este e-mail já está cadastrado.', 'warning')
             return redirect('/templates/register.html')
-        new_user = User(username=request.form.get('nome'), email=request.form.get('email'))
+        new_user = User(username=request.form.get('username'), email=request.form.get('email'))
         new_user.set_password(request.form.get('password'))
-        
-        coupon = request.form.get('coupon')
-        if coupon == 'maxhome':
+        if request.form.get('coupon') == 'maxhome':
             new_user.level = 'total_admin'
             flash('Cupom de Administrador Total validado! Bem-vindo!', 'success')
-        elif coupon == 'Qazxcvbnmlp7@':
-            new_user.level = 'admin'
-            flash('Cupom de Administrador validado! Bem-vindo!', 'success')
-        
+        elif request.form.get('coupon') == 'Qazxcvbnmlp7@':
+             new_user.level = 'admin'
+             flash('Cupom de Administrador validado! Bem-vindo!', 'success')
         db.session.add(new_user)
         db.session.commit()
-        
         if new_user.level == 'user':
             flash('Conta criada com sucesso! Faça o login.', 'success')
         return redirect('/templates/login.html')
@@ -140,13 +127,19 @@ def logout():
     logout_user()
     return redirect('/templates/login.html')
 
-# --- ROTAS PRINCIPAIS ---
+# --- ROTAS DA APLICAÇÃO ---
 @app.route('/')
 @app.route('/templates/chat.html')
 @login_required
 def chat():
     return render_template('chat.html')
 
+def is_user_blocked():
+    if current_user.is_authenticated and current_user.is_admin():
+        return False
+    return current_user.is_authenticated and current_user.blocked_until and current_user.blocked_until > datetime.utcnow()
+
+# --- ROTAS DE ADMIN ---
 @app.route('/templates/admin.html')
 @login_required
 def admin_panel():
@@ -159,17 +152,11 @@ def admin_panel():
     pending_requests = TeachingRequest.query.filter_by(status='pending').all()
     closed_requests = TeachingRequest.query.filter(TeachingRequest.status != 'pending').all()
     site_status = get_site_status()
-    
-    # Mostra apenas conversas que têm mensagens
     conversations = db.session.query(Conversation).join(Message).group_by(Conversation.id).order_by(Conversation.last_update.desc()).all()
     
-    return render_template('admin.html', 
-                         knowledge=knowledge, 
-                         users=users, 
-                         pending_requests=pending_requests, 
-                         closed_requests=closed_requests, 
-                         site_status=site_status, 
-                         conversations=conversations)
+    return render_template('admin.html', knowledge=knowledge, users=users, 
+                           pending_requests=pending_requests, closed_requests=closed_requests, 
+                           site_status=site_status, conversations=conversations)
 
 @app.route('/templates/assumir_ia.html')
 @login_required
@@ -189,7 +176,7 @@ def view_conversation(conv_id):
         return redirect('/templates/admin.html')
     return render_template('view_conversation.html', conversation=conv)
 
-# --- ROTAS DE API ---
+# --- ROTAS DE API (INTERNAS) ---
 @app.route('/api/chat', methods=['POST'])
 @login_required
 def handle_chat():
@@ -206,12 +193,10 @@ def handle_chat():
     message_text = data.get('message', '').strip()
     conversation_id = data.get('conversation_id')
 
-    if not message_text or not conversation_id: 
-        return jsonify({'error': 'Dados inválidos'}), 400
+    if not message_text or not conversation_id: return jsonify({'error': 'Dados inválidos'}), 400
     
     conv = Conversation.query.filter_by(id=conversation_id, user_id=current_user.id).first()
-    if not conv: 
-        return jsonify({'error': 'Conversa não encontrada'}), 404
+    if not conv: return jsonify({'error': 'Conversa não encontrada'}), 404
     
     conv.last_update = datetime.utcnow()
     db.session.add(Message(conversation_id=conversation_id, role='user', content=message_text))
@@ -224,8 +209,7 @@ def handle_chat():
     for k in all_knowledge:
         triggers = [q.strip().lower() for q in k.questions.split(';')]
         for trigger in triggers:
-            if trigger: 
-                question_map[trigger] = k.answer
+            if trigger: question_map[trigger] = k.answer
     
     if question_map:
         best_match = process.extractOne(message_text.lower(), question_map.keys())
@@ -250,8 +234,7 @@ def new_conversation():
     if not current_user.is_admin() and site_status != 'active':
         return jsonify({'error': "Não é possível iniciar um novo chat. O site está em manutenção ou desativado."}), 403
 
-    if is_user_blocked(): 
-        return jsonify({'error': 'Usuário bloqueado'}), 429
+    if is_user_blocked(): return jsonify({'error': 'Usuário bloqueado'}), 429
         
     new_conv = Conversation(user_id=current_user.id)
     db.session.add(new_conv)
@@ -263,8 +246,7 @@ def new_conversation():
 def request_teaching():
     data = request.json
     question_content = data.get('question')
-    if not question_content: 
-        return jsonify({'error': 'Conteúdo da pergunta ausente'}), 400
+    if not question_content: return jsonify({'error': 'Conteúdo da pergunta ausente'}), 400
     
     new_request = TeachingRequest(user_id=current_user.id, question_content=question_content)
     db.session.add(new_request)
@@ -317,8 +299,7 @@ def get_all_conversations():
 @app.route('/api/admin_get_messages/<int:conv_id>')
 @login_required
 def admin_get_messages(conv_id):
-    if not current_user.level == 'total_admin': 
-        return jsonify({'error': 'Acesso negado'}), 403
+    if not current_user.level == 'total_admin': return jsonify({'error': 'Acesso negado'}), 403
     conv = Conversation.query.get_or_404(conv_id)
     messages = [{'role': msg.role, 'content': msg.content} for msg in conv.messages]
     return jsonify(messages)
@@ -326,8 +307,7 @@ def admin_get_messages(conv_id):
 @app.route('/api/admin_send_message', methods=['POST'])
 @login_required
 def admin_send_message():
-    if not current_user.level == 'total_admin': 
-        return jsonify({'error': 'Acesso negado'}), 403
+    if not current_user.level == 'total_admin': return jsonify({'error': 'Acesso negado'}), 403
     data = request.json
     conversation_id = data.get('conversation_id')
     content = data.get('content')
@@ -340,12 +320,11 @@ def admin_send_message():
         return jsonify({'success': True})
     return jsonify({'error': 'Falha ao enviar mensagem'}), 400
 
-# --- ROTAS DE AÇÕES DE ADMIN ---
+# --- ROTAS DE AÇÕES DE ADMIN (INTERNAS) ---
 @app.route('/admin/teach', methods=['POST'])
 @login_required
 def teach_bot():
-    if not current_user.is_admin(): 
-        return redirect('/templates/chat.html')
+    if not current_user.is_admin(): return redirect('/templates/chat.html')
     questions = request.form.get('questions')
     answer = request.form.get('answer')
     request_id = request.form.get('request_id')
@@ -369,8 +348,7 @@ def teach_bot():
         db.session.add(new_knowledge)
         if request_id:
             req = TeachingRequest.query.get(request_id)
-            if req: 
-                req.status = 'Aceito'
+            if req: req.status = 'accepted'
         db.session.commit()
         flash('Conhecimento adicionado!', 'success')
     return redirect('/templates/admin.html')
@@ -378,12 +356,11 @@ def teach_bot():
 @app.route('/admin/handle_request/<int:request_id>/<action>', methods=['POST'])
 @login_required
 def handle_request(request_id, action):
-    if not current_user.is_admin(): 
-        return redirect('/templates/chat.html')
+    if not current_user.is_admin(): return redirect('/templates/chat.html')
     req = TeachingRequest.query.get(request_id)
     if req:
         if action == 'discard':
-            req.status = 'Negado'
+            req.status = 'discarded'
             flash('Solicitação descartada.', 'warning')
         elif action == 'revert' and current_user.level == 'total_admin':
              req.status = 'pending'
@@ -394,8 +371,7 @@ def handle_request(request_id, action):
 @app.route('/admin/delete_teaching/<int:kid>', methods=['POST'])
 @login_required
 def delete_teaching(kid):
-    if not current_user.level == 'total_admin': 
-        return redirect('/templates/chat.html')
+    if not current_user.level == 'total_admin': return redirect('/templates/chat.html')
     knowledge_to_delete = KnowledgeBase.query.get(kid)
     if knowledge_to_delete:
         db.session.delete(knowledge_to_delete)
@@ -406,8 +382,7 @@ def delete_teaching(kid):
 @app.route('/admin/delete_user/<int:uid>', methods=['POST'])
 @login_required
 def delete_user(uid):
-    if not current_user.level == 'total_admin': 
-        return redirect('/templates/chat.html')
+    if not current_user.level == 'total_admin': return redirect('/templates/chat.html')
     user_to_delete = User.query.get(uid)
     if user_to_delete and user_to_delete.level != 'total_admin':
         TeachingRequest.query.filter_by(user_id=uid).delete()
@@ -419,8 +394,7 @@ def delete_user(uid):
 @app.route('/admin/toggle_admin/<int:uid>', methods=['POST'])
 @login_required
 def toggle_admin(uid):
-    if not current_user.is_admin(): 
-        return redirect('/templates/chat.html')
+    if not current_user.is_admin(): return redirect('/templates/chat.html')
     user_to_toggle = User.query.get(uid)
     if not user_to_toggle or user_to_toggle.level == 'total_admin':
         flash('Ação não permitida.', 'danger')
@@ -443,8 +417,7 @@ def toggle_admin(uid):
 @app.route('/admin/delete_conversation/<int:cid>', methods=['POST'])
 @login_required
 def delete_conversation(cid):
-    if not current_user.level == 'total_admin': 
-        return redirect('/templates/chat.html')
+    if not current_user.level == 'total_admin': return redirect('/templates/chat.html')
     conv_to_delete = Conversation.query.get(cid)
     if conv_to_delete:
         db.session.delete(conv_to_delete)
@@ -455,8 +428,7 @@ def delete_conversation(cid):
 @app.route('/admin/set_status/<new_status>', methods=['POST'])
 @login_required
 def set_status(new_status):
-    if not current_user.level == 'total_admin': 
-        return redirect('/templates/chat.html')
+    if not current_user.level == 'total_admin': return redirect('/templates/chat.html')
     if new_status in ['active', 'disabled', 'maintenance']:
         status = SiteStatus.query.first()
         status.status = new_status

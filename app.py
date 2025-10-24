@@ -115,7 +115,7 @@ def register():
         if User.query.filter_by(email=request.form.get('email')).first():
             flash('Este e-mail já está cadastrado.', 'warning')
             return redirect('/templates/register.html')
-        new_user = User(username=request.form.get('username'), email=request.form.get('email'))
+        new_user = User(username=request.form.get('nome'), email=request.form.get('email'))
         new_user.set_password(request.form.get('password'))
         
         coupon = request.form.get('coupon')

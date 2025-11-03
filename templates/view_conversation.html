@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+{% block title %}Visualizar Conversa{% endblock %}
+{% block content %}
+<main class="main-content">
+    <div class="chat-header">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <h1>Conversa com {% if conversation.user %}{{ conversation.user.username }}{% else %}Usuário Apagado{% endif %}</h1>
+            <a href="/templates/admin.html" class="back-link">
+                <i class="fas fa-arrow-left"></i> Voltar ao Admin
+            </a>
+        </div>
+    </div>
+    <div class="messages-container" style="padding: 2rem;">
+        {% for message in conversation.messages %}
+        <div class="message {{ message.role }}">
+            <div class="message-avatar">
+                {% if message.role == 'user' %}
+                    <i class="fas fa-user"></i>
+                {% else %}
+                    <img src="/static/img/logo.png" alt="ZIPBUM Logo">
+                {% endif %}
+            </div>
+            <div class="message-text">
+                <p>{{ message.content }}</p>
+                <div class="message-footer">
+                    <span class="timestamp">{{ message.timestamp | to_local_time }}</span>
+                    {% if message.role == 'user' and conversation.user %}
+                    <a href="/templates/admin.html?learn_question={{ message.content | urlencode }}" class="btn-learn">
+                        <i class="fas fa-brain"></i> Ensinar com esta pergunta
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 3rem; color: var(--gray);">
+            <i class="fas fa-comment-slash" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+            <p>Ainda não há mensagens nesta conversa.</p>
+        </div>
+        {% endfor %}
+    </div>
+</main>
+{% endblock %}

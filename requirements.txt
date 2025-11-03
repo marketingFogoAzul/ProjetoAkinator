@@ -1,0 +1,10 @@
+Flask
+python-dotenv
+Flask-SQLAlchemy
+psycopg2-binary
+Flask-Login
+Werkzeug
+thefuzz
+python-Levenshtein
+gunicorn
+pytz

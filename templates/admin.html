@@ -1,0 +1,207 @@
+{% extends "layout.html" %}
+{% block title %}Admin - ZIPBUM{% endblock %}
+{% block content %}
+<main class="admin-container">
+    <div class="admin-header">
+        <h1>Painel do Administrador</h1>
+        <div class="header-links">
+            {% if current_user.level == 'total_admin' %}
+            <a href="/templates/assumir_ia.html">Assumir IA</a>
+            {% endif %}
+            <a href="/templates/chat.html">Voltar para o Chat</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if current_user.level == 'total_admin' %}
+    <section class="admin-card global-controls">
+        <h2><i class="fas fa-cogs"></i> Controles Globais do Site</h2>
+        <div class="status-info">
+            <p>Status Atual: <span class="status-badge status-{{ site_status }}">{{ site_status.capitalize() }}</span></p>
+        </div>
+        <div class="control-buttons">
+            <form action="/admin/set_status/active" method="POST" onsubmit="return confirm('Tem certeza que quer ATIVAR o robô para todos os usuários?');">
+                <button type="submit" class="btn-promote">Ativar Robô</button>
+            </form>
+            <form action="/admin/set_status/disabled" method="POST" onsubmit="return confirm('Tem certeza que quer DESATIVAR o robô? Usuários não poderão conversar com ele.');">
+                <button type="submit" class="btn-revoke">Desativar Robô</button>
+            </form>
+            <form action="/admin/set_status/maintenance" method="POST" onsubmit="return confirm('Tem certeza que quer colocar o site em MANUTENÇÃO?');">
+                <button type="submit" class="btn-maintenance">Manutenção</button>
+            </form>
+        </div>
+    </section>
+    {% endif %}
+
+    <div class="admin-tabs">
+        <button class="tab-link active" onclick="openTab(event, 'Ensinar')">Ensinar</button>
+        <button class="tab-link" onclick="openTab(event, 'Solicitacoes')">Solicitações de Ensino</button>
+        <button class="tab-link" onclick="openTab(event, 'Gerenciar')">Gerenciar Usuários</button>
+        <button class="tab-link" onclick="openTab(event, 'Historico')">Histórico de Conversas</button>
+    </div>
+
+    <div id="Ensinar" class="tab-content" style="display: block;">
+        <div class="admin-grid">
+            <section class="admin-card">
+                <h2><i class="fas fa-brain"></i> Ensinar o ZIPBUM</h2>
+                <form class="teach-form" action="/admin/teach" method="POST">
+                    <div class="input-group">
+                        <label for="questions">Quando o usuário perguntar algo como... (separe com ";")</label>
+                        <input type="text" name="questions" id="questions" value="{{ learn_question }}" required placeholder="Olá; Oi; Bom dia">
+                    </div>
+                    <div class="input-group">
+                        <label for="answer">Responda com...</label>
+                        <textarea name="answer" id="answer" rows="4" required></textarea>
+                    </div>
+                    <input type="hidden" name="request_id" id="form_request_id">
+                    <button type="submit" class="btn-primary">Salvar Conhecimento</button>
+                </form>
+            </section>
+            <section class="admin-card">
+                <h2><i class="fas fa-book-open"></i> Base de Conhecimento</h2>
+                <div class="item-list knowledge-list">
+                    {% for item in knowledge %}
+                    <div class="list-item">
+                        <div class="knowledge-content">
+                            <p><strong>Gatilhos:</strong> {{ item.questions }}</p>
+                            <p><strong>Resposta:</strong> {{ item.answer }}</p>
+                        </div>
+                        {% if current_user.level == 'total_admin' %}
+                        <form action="/admin/delete_teaching/{{ item.id }}" method="POST" onsubmit="return confirm('Tem certeza que quer apagar este ensinamento?');">
+                            <button type="submit" class="btn-delete-small"><i class="fas fa-trash"></i></button>
+                        </form>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <p>Nenhum conhecimento foi adicionado ainda.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div id="Solicitacoes" class="tab-content">
+        <section class="admin-card full-width">
+            <h2><i class="fas fa-inbox"></i> Solicitações Pendentes</h2>
+            <div class="item-list">
+                {% for req in pending_requests %}
+                <div class="list-item status-pending">
+                    <div style="flex: 1;">
+                        <span><strong>Usuário:</strong> {{ req.user.username }}</span>
+                        <span class="request-text">"{{ req.question_content }}"</span>
+                    </div>
+                    <div class="request-actions">
+                        <button class="btn-teach-action" data-request-id="{{ req.id }}">Ensinar</button>
+                        <form action="/admin/handle_request/{{ req.id }}/discard" method="POST">
+                            <button type="submit" class="btn-discard">Descartar</button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <p>Nenhuma solicitação pendente.</p>
+                {% endfor %}
+            </div>
+        </section>
+        <section class="admin-card full-width">
+            <h2><i class="fas fa-check-circle"></i> Solicitações Encerradas</h2>
+            <div class="item-list">
+                {% for req in closed_requests %}
+                <div class="list-item status-{{ req.status }}">
+                    <div style="flex: 1;">
+                        <span><strong>Usuário:</strong> {{ req.user.username }}</span>
+                        <span class="request-text">"{{ req.question_content }}"</span>
+                        <div class="request-actions">
+                            <span class="request-status {{ req.status }}">Status: {{ req.status.capitalize() }}</span>
+                            {% if current_user.level == 'total_admin' %}
+                            <form action="/admin/handle_request/{{ req.id }}/revert" method="POST">
+                                <button type="submit" class="btn-revert">Reverter</button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <p>Nenhuma solicitação encerrada.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+
+    <div id="Gerenciar" class="tab-content">
+        <div class="admin-grid">
+            <section class="admin-card full-width">
+                <h2><i class="fas fa-users-cog"></i> Gerenciar Usuários</h2>
+                
+                <div class="search-container admin-search">
+                    <input type="text" id="adminUserSearchInput" placeholder="Buscar por nome ou e-mail...">
+                </div>
+
+                <div class="item-list user-list" id="userListContainer">
+                    {% for user in users %}
+                    <div class="list-item user-item">
+                        <div class="user-details">
+                            <span><strong>Usuário:</strong> {{ user.username }}</span>
+                            <span class="user-email">{{ user.email }}</span>
+                            <span class="status-badge status-{{ user.level }}">{{ user.level }}</span>
+                        </div>
+                        <div class="user-actions">
+                        {% if user.level != 'total_admin' %}
+                            <form action="/admin/toggle_admin/{{ user.id }}" method="POST">
+                                {% if user.level == 'admin' %}
+                                    {% if current_user.level == 'total_admin' %}
+                                    <button type="submit" class="btn-revoke">Revogar Admin</button>
+                                    {% endif %}
+                                {% else %}
+                                <button type="submit" class="btn-promote">Promover a Admin</button>
+                                {% endif %}
+                            </form>
+                            {% if current_user.level == 'total_admin' %}
+                            <form action="/admin/delete_user/{{ user.id }}" method="POST" onsubmit="return confirm('Tem certeza que quer APAGAR este usuário e todas as suas conversas?');">
+                                <button type="submit" class="btn-delete">Apagar Usuário</button>
+                            </form>
+                            {% endif %}
+                        {% else %}
+                            <span class="is-admin-badge">Intocável</span>
+                        {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+    </div>
+    
+    <div id="Historico" class="tab-content">
+        <section class="admin-card full-width">
+            <h2><i class="fas fa-history"></i> Histórico de Todas as Conversas</h2>
+            <div class="item-list">
+                {% for conv in conversations %}
+                <a href="/templates/admin/view_conversation/{{ conv.id }}" class="list-item">
+                    <div class="user-details">
+                        <span><strong>Usuário:</strong> {% if conv.user %}{{ conv.user.username }}{% else %}Usuário Apagado{% endif %}</span>
+                        <span>{{ conv.last_update | to_local_time }}</span>
+                    </div>
+                    {% if current_user.level == 'total_admin' %}
+                    <form action="/admin/delete_conversation/{{ conv.id }}" method="POST" onsubmit="event.preventDefault(); if(confirm('Tem certeza que quer APAGAR esta conversa?')) { this.submit(); }">
+                        <button type="submit" class="btn-delete-small"><i class="fas fa-trash"></i></button>
+                    </form>
+                    {% endif %}
+                </a>
+                {% else %}
+                <p>Nenhuma conversa encontrada.</p>
+                {% endfor %}
+            </div>
+        </section>
+    </div>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/admin.js"></script>
+{% endblock %}

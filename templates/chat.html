@@ -1,0 +1,60 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="sidebar">
+    <div class="sidebar-header">
+        <button class="btn-new-chat" id="newChatBtn">
+            <i class="fas fa-plus"></i> Novo Chat
+        </button>
+    </div>
+
+    <div class="chat-history" id="chatHistory">
+        <p class="history-title">Histórico</p>
+        <div id="historyList" class="history-list">
+        </div>
+    </div>
+
+    <div class="sidebar-footer">
+        <div class="user-info">
+            <div class="admin-links">
+                {% if current_user.level == 'total_admin' %}
+                    <a href="/templates/assumir_ia.html" class="admin-link">Assumir IA</a>
+                {% endif %}
+                {% if current_user.is_admin() %}
+                    <a href="/templates/admin.html" class="admin-link">Admin</a>
+                {% endif %}
+            </div>
+            <p class="username">{{ current_user.username }}</p>
+        </div>
+        <div class="footer-actions">
+            <button class="theme-toggle" id="themeToggle" title="Alternar tema">
+                <i class="fas fa-moon"></i>
+            </button>
+            <a href="/logout" class="logout-link">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </a>
+        </div>
+    </div>
+</div>
+<main class="main-content">
+    <div class="chat-header">
+        <h1>ZIPBUM</h1>
+    </div>
+    <div class="messages-container" id="messagesContainer">
+        <div class="welcome-message" id="welcomeMessage">
+            <div class="welcome-icon"><img src="/static/img/logo.png" alt="ZIPBUM Logo"></div>
+            <h2>Como posso ajudar hoje?</h2>
+        </div>
+    </div>
+    <div class="input-container">
+        <div class="input-wrapper">
+            <textarea id="messageInput" placeholder="Digite sua mensagem..." rows="1"></textarea>
+            <button id="sendButton" class="btn-send">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+</main>
+{% endblock %}
+{% block scripts %}
+<script src="/static/js/script.js"></script>
+{% endblock %}

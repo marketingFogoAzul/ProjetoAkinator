@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block title %}Cadastro - ZIPBUM{% endblock %}
+{% block content %}
+<main class="auth-container">
+    <div class="auth-form">
+        <div class="auth-header">
+            <i class="fas fa-user-plus"></i>
+            <h1>Crie sua Conta</h1>
+            <p>É rápido e fácil</p>
+        </div>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash-message {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <form method="POST" action="/templates/register.html">
+            <div class="input-group">
+                <label for="username">Nome</label>
+                <input type="text" name="nome" id="username" required>
+            </div>
+            <div class="input-group">
+                <label for="email">Email</label>
+                <input type="email" name="email" id="email" required>
+            </div>
+            <div class="input-group">
+                <label for="password">Senha</label>
+                <input type="password" name="password" id="password" required>
+            </div>
+            <div class="input-group">
+                <label for="coupon">Cupom (Opcional)</label>
+                <input type="text" name="coupon" id="coupon" placeholder="Ex: Qazxcvbnmlp7@ ou maxhome">
+            </div>
+            <button type="submit" class="btn-primary">Cadastrar</button>
+        </form>
+        <p class="auth-footer">Já tem uma conta? <a href="/templates/login.html">Faça login</a></p>
+    </div>
+</main>
+{% endblock %}

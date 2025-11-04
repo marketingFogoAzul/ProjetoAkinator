@@ -147,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function() {
         currentConversationId = null;
         sidebarTitle.textContent = 'Usuários';
         backToUsersBtn.style.display = 'none';
-        userSearchInput.style.display = 'block';
+        userSearchInput.style.display = 'block'; 
         inputContainer.style.display = 'none';
         chatHeader.innerHTML = '<h1>Selecione um usuário para ver as conversas</h1>';
         messagesContainer.innerHTML = '';

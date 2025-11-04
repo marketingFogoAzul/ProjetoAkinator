@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const searchTerm = this.value.toLowerCase();
             const userItems = document.querySelectorAll('.user-item');
             
-            userItems.forEach(item => {
+            userItems.forEach(item => { 
                 const username = item.querySelector('span:nth-child(1)').textContent.toLowerCase();
                 const email = item.querySelector('.user-email').textContent.toLowerCase();
                 

@@ -1125,7 +1125,7 @@ textarea::placeholder {
 
 [data-theme="light"] .user-email {
     color: #64748b;
-}
+} 
 
 ::-webkit-scrollbar {
     width: 8px;

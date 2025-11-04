@@ -17,7 +17,7 @@ login_manager = LoginManager(app)
 login_manager.login_view = 'login' # Nome da FUNÇÃO login() abaixo
 login_manager.login_message = "Por favor, faça login para acessar esta página."
 
-# --- CONVERSOR DE FUSO HORÁRIO ---
+# --- CONVERSOR DE FUSO HORÁRIO --
 @app.template_filter('to_local_time')
 def to_local_time(utc_datetime):
     if not utc_datetime:

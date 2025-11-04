@@ -31,7 +31,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 themeToggle.title = 'Modo Claro';
                 themeToggle.setAttribute('aria-label', 'Mudar para modo escuro');
             }
-        }
+        } 
     }
     
     function updateMetaTheme(theme) {

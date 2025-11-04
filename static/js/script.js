@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     messageInput.addEventListener('input', () => {
         autoResizeTextarea();
-        updateUIState();
+        updateUIState(); 
     });
 
     messageInput.addEventListener('keydown', (e) => {
